@@ -58,3 +58,16 @@ Railway setup tips:
 - Set the "Start Command" to: npm run start
 - Add environment variables in the Railway settings (see list above).
 - For Prisma migrations: create a Railway plugin to run `npx prisma migrate deploy` after database is provisioned.
+
+Automated migrations via GitHub Actions:
+ - There's an optional workflow in `.github/workflows/migrate.yml` that runs `npx prisma migrate deploy` using the `DATABASE_URL` secret.
+ - You can run it manually via GitHub > Actions > Migrate DB, or enable it to run on every push.
+
+Manual migration on Railway:
+ - After the database is provisioned on Railway, run in the Railway console or via an SSH session:
+
+```
+npx prisma migrate deploy --schema=apps/backend/prisma/schema.prisma
+```
+
+Be sure to set `DATABASE_URL` in Railway secrets before running migrations.
