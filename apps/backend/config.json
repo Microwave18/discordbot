@@ -1,0 +1,36 @@
+{
+  "guildId": "",
+  "logChannelId": "",
+  "linkedRoleId": "",
+  "ticketCategoryId": "",
+  "ticketArchiveChannelId": "",
+  "adminRatingChannelId": "",
+  "theme": {
+    "flameOrange": "#FF4500",
+    "deepCarbon": "#2B2B2B",
+    "gold": "#FFD700",
+    "emberAccent": "#FF6B00"
+  },
+  "categories": [
+    { "emoji": "👑", "name": "VIP Transfer" },
+    { "emoji": "🎁", "name": "Rewards / Giveaway" },
+    { "emoji": "💼", "name": "Business" },
+    { "emoji": "⚙️", "name": "Technical Problem" },
+    { "emoji": "🐞", "name": "Bug" },
+    { "emoji": "💬", "name": "Other" }
+  ],
+  "priorities": [
+    { "emoji": "🔥", "name": "Critical" },
+    { "emoji": "❤️", "name": "High" },
+    { "emoji": "💛", "name": "Medium" },
+    { "emoji": "💚", "name": "Low" }
+  ],
+  "priorityEmojiMap": {
+    "critical": "🔥",
+    "high": "❤️",
+    "medium": "💛",
+    "low": "💚"
+  },
+  "ticketCooldown": 3600,
+  "fraudThreshold": 3
+}

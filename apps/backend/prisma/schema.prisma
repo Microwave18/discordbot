@@ -1,0 +1,89 @@
+// Prisma schema for PostgreSQL
+// Save as schema.prisma in apps/backend/prisma/
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  discordId     String   @unique
+  kickId        String?  @unique
+  upgraderId    String?  @unique
+  rustmagicId   String?  @unique
+  otherId       String?  @unique
+  verifiedFlags Json
+  linkedAt      DateTime @default(now())
+  tickets       Ticket[]
+  linkLogs      LinkLog[]
+}
+
+model LinkLog {
+  id           String   @id @default(uuid())
+  user         User     @relation(fields: [userId], references: [id])
+  userId       String
+  changesJson  Json
+  noticePosted Boolean  @default(false)
+  createdAt    DateTime @default(now())
+}
+
+model Ticket {
+  id                String   @id @default(uuid())
+  ticketChannelId   String   @unique
+  creator           User     @relation(fields: [creatorId], references: [id])
+  creatorId         String
+  category          String
+  priority          String
+  status            String
+  createdAt         DateTime @default(now())
+  closedAt          DateTime?
+  closedBy          String?
+  closeReason       String?
+  transcriptSaved   Boolean  @default(false)
+  messages          TicketMessage[]
+  adminRatings      AdminRating[]
+}
+
+model TicketMessage {
+  id             String   @id @default(uuid())
+  ticket         Ticket   @relation(fields: [ticketId], references: [id])
+  ticketId       String
+  authorId       String
+  content        String
+  attachmentsJson Json
+  timestamp      DateTime @default(now())
+}
+
+model AdminRating {
+  id        String   @id @default(uuid())
+  ticket    Ticket   @relation(fields: [ticketId], references: [id])
+  ticketId  String
+  adminId   String
+  raterId   String
+  rating    Int
+  comment   String?
+  timestamp DateTime @default(now())
+}
+
+model Badge {
+  id        String   @id @default(uuid())
+  adminId   String
+  badgeKey  String
+  awardedAt DateTime @default(now())
+}
+
+model XP {
+  adminId  String   @id
+  xpTotal  Int
+  level    Int
+}
+
+model Config {
+  id      Int    @id @default(1)
+  json    Json
+}

@@ -1,0 +1,22 @@
+{
+  "name": "discordboto-monorepo",
+  "private": true,
+  "workspaces": [
+    "apps/backend",
+    "apps/frontend",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm --prefix apps/frontend run build && npm --prefix apps/backend run build",
+    "postinstall": "npm --prefix apps/backend run postinstall",
+    "start": "npm --prefix apps/backend run start"
+  },
+  "dependencies": {
+    "@types/axios": "^0.9.36",
+    "@types/express-session": "^1.18.2",
+    "@types/passport": "^1.0.17",
+    "@types/passport-discord": "^0.1.14",
+    "axios": "^1.12.2",
+    "express-session": "^1.18.2"
+  }
+}

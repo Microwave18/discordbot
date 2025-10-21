@@ -1,0 +1,208 @@
+# Link + Ticket System — Detailed Design
+
+**Theme:** Fire × Gambling streamer aesthetic (subtle flames, gold accents, casino vibes). Use the provided chibi image as mascot/asset.
+
+---
+
+## 1. Project Overview
+
+A small web app + Discord bot that:
+
+* Lets users sign in with **Discord (OAuth2)** and **Kick (OAuth2 with 2FA)**.
+* Collects and stores four IDs: Upgrader ID, RustMagic ID, Kick ID, Upgrader/Other ID.
+* When all 4 are linked and verified, the bot grants a Discord role and posts a clean embed to a configured log channel.
+* Provides a full-featured ticket system with category/priority selects, themed embeds, private ticket channels, transcript export, and post-close admin ratings via DM.
+* Web dashboard for admins with dynamic stats, badges, flame XP, and config controls.
+
+---
+
+## 2. Visual Theme & Assets
+
+* **Palette:**
+
+  * Flame Orange: `#FF4500`
+  * Deep Carbon: `#2B2B2B`
+  * Gold: `#FFD700`
+  * Ember Accent: `#FF6B00`
+* **Typography:** Orbitron (headlines), Rajdhani (UI)
+* **Mascot:** use the provided chibi image as loading icon, small avatar in embeds, and Dashboard mascot.
+* **Subtle animations:** ember particles in background, glowing/pulse button effects, slot-reel animation on full-link success.
+
+### Example small CSS snippets (for the web dashboard)
+
+```css
+.button-fire {
+  background: linear-gradient(90deg,#FF4500,#FF6B00);
+  box-shadow: 0 6px 20px rgba(255,69,0,0.25);
+  border-radius: 12px;
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.button-fire:hover { transform: translateY(-3px); box-shadow: 0 12px 30px rgba(255,69,0,0.30); }
+@keyframes ember { 0% { transform: translateY(0) } 100% { transform: translateY(-12px) } }
+.ember { animation: ember 3s ease-in-out infinite; opacity: .9 }
+```
+
+---
+
+## 3. Authentication & Verification
+
+1. **Discord OAuth2 (primary id)** — required. If user denies, they cannot link.
+2. **Kick OAuth2 with 2FA** — required. Use two-factor verification flow provided by Kick.
+3. **Ownership Verification (recommended)**: after user supplies external IDs, optionally send a verification token via Discord DM or require placing a short code on the external account profile. Mark `verified: true` once validated.
+
+**Security:** store secrets in environment variables; use session cookies (HTTPOnly) and CSRF protection.
+
+---
+
+## 4. Database Schema (core)
+
+* **users**: id, discord_id, kick_id, upgrader_id, rustmagic_id, other_id, verified_flags, linked_at
+* **link_logs**: id, user_id, changes_json, notice_posted (bool), created_at
+* **tickets**: id, ticket_channel_id, creator_id, category, priority, status, created_at, closed_at, closed_by, close_reason, transcript_saved
+* **ticket_messages**: id, ticket_id, author_id, content, attachments_json, timestamp
+* **admin_ratings**: id, ticket_id, admin_id, rater_id, rating, comment, timestamp
+* **badges**: id, admin_id, badge_key, awarded_at
+* **xp**: admin_id, xp_total, level
+* **config** (singleton): json including channels, role ids, categories, priorities, theme
+
+---
+
+## 5. Config (single file)
+
+`config.json` holds all editable values: guildId, logChannelId, linkedRoleId, ticketCategoryId, ticketArchiveChannelId, adminRatingChannelId, theme colors, category list, priority emoji map, ticket cooldown values, fraud thresholds.
+
+---
+
+## 6. Ticket System — Full Flow
+
+### Categories (with emoji)
+
+* 👑 VIP Transfer
+* 🎁 Rewards / Giveaway
+* 💼 Business
+* ⚙️ Technical Problem
+* 🐞 Bug
+* 💬 Other
+
+### Priorities (with emoji)
+
+* 🔥 Critical
+* ❤️ High
+* 💛 Medium
+* 💚 Low
+
+### Channel naming rule
+
+`<PriorityEmoji><CategoryEmoji>│<priority>-<category>-<ticketID>`
+Example: `🔥👑│critical-vip-101`
+
+### Creation flow
+
+1. User clicks **Create Ticket** embed button.
+2. Modal appears: select Category (dropdown), Priority (dropdown), Short Summary (text).
+3. Bot creates a private channel in `ticketCategoryId` with permission overrides for creator + support roles + admins.
+4. Bot posts styled starter embed (title, icons, priority chip, creator mention) with buttons: `Claim`, `Close`, `Add Collaborator`, `Transcript`.
+5. Conversations are captured to `ticket_messages` or compiled on close.
+
+### Claim system & moderation
+
+* Staff can `Claim` ticket; embed updates to show the claimer tag.
+* Auto-claim optional when staff opens the channel.
+
+### Auto-close & cooldowns
+
+* Auto-close after X hours of inactivity (configurable) with a warning 10 mins before.
+* Rate limit users: X tickets per hour (configurable).
+
+### Close flow
+
+* Staff clicks `Close` → modal asks `close_reason` (required) and choose `close_type` (resolved/spam/invalid).
+* Bot compiles transcript as HTML and uploads to `ticketArchiveChannelId` (with embed pointing to transcript). Update DB.
+* Bot locks/archives the ticket channel.
+* Bot DMs the user for admin rating (see Rating section).
+
+---
+
+## 7. Rating & Feedback (Post-Close)
+
+1. DM: `Please rate the admin(s): Messages Feedback` button.
+2. If pressed: show select of admins who participated (or all admins if none found). Choose admin(s), pick rating 1–10 (slider or dropdown), add comment.
+3. Save to `admin_ratings` and post a summarized embed to `adminRatingChannelId` (admin mention, rating, ticket id, optional comment).
+4. Award XP & badges to admins based on rating thresholds. Update leaderboard and admin profile.
+
+---
+
+## 8. Fraud / Duplicate Detection
+
+* On linking: check if supplied external ID is already tied to another Discord. If so, flag and notify staff (and optionally block).
+* Thresholds in config: auto-suspend if > N conflicts within 24h.
+
+---
+
+## 9. Dynamic Stats & Dashboard
+
+* Live gadgets: active ticket count (animated flame), average rating dial, linked users ticker, leaderboard.
+* Charts: tickets/day, avg response time, top admins.
+* Export: CSV of ratings & tickets.
+
+**Widgets & Animations**
+
+* Slot-reel animation for linking success.
+* Ember particles background (canvas or CSS).
+* Pulsing gold heatmap bars for leaderboard.
+
+---
+
+## 10. Badge System & Flame XP
+
+* Badges: Top Helper, Fast Responder, 10+ Tickets, 5★ Average.
+* XP accrues per ticket closed + bonus for ratings ≥9. Level names: Spark→Ember→Flame→Inferno.
+* Display on admin profile and leaderboard.
+
+---
+
+## 11. Transcript Formats
+
+* Save transcripts as **HTML** (styled) + plain `.txt` as fallback. Include avatars, timestamps, and attachments. Upload to archive channel and store reference in DB.
+
+---
+
+## 12. Slash Commands & Utilities
+
+* `/profile <user?>` — show link & badges (admin only for others).
+* `/tickets [open/closed] [filter]` — list tickets.
+* `/claim <ticket>` — claim ticket.
+* `/config` — admin-only quick view of config keys.
+
+---
+
+## 13. Permissions & Bot Setup
+
+* Required Bot Scopes: `bot`, `applications.commands`; OAuth scopes for web: `identify`, `guilds`.
+* Permissions needed: Manage Roles, Create Channels, Send Messages, Embed Links, Attach Files, Read Message History, Manage Messages (optional), Manage Webhooks.
+* Bot role must be higher than `linkedRoleId`.
+
+---
+
+## 14. Deployment & Environment
+
+* Backend: Node.js + TypeScript (recommended) — Express/Fastify. Discord integration with `discord.js` v14.
+* Frontend: React (Vite) or Next.js. Host on Vercel/Netlify. Backend on Render/Heroku/DO.
+* DB: PostgreSQL (production), SQLite for dev.
+* Use Redis for session store (recommended).
+
+---
+
+## 15. Deliverables & Next Steps
+
+If you want me to produce code artifacts next, I can deliver in stages:
+
+1. `config.json` template + `.env.example`.
+2. SQL/Prisma models & migrations.
+3. Backend skeleton (OAuth endpoints, `POST /me/ids`).
+4. Discord bot starter: linking + role assignment + log embed + ticket creation + close flow + rating DM flow.
+5. React dashboard mockup (HTML/CSS) with flame animations and widgets.
+
+---
+
+If this looks right, tell me which deliverable to start with (config & DB, bot code, or frontend mockup). I will generate code and assets accordingly.
