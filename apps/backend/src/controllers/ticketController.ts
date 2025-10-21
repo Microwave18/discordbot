@@ -1,18 +1,20 @@
 import { Request, Response } from 'express';
 import prisma from '../prismaClient';
+import { v4 as uuidv4 } from 'uuid';
 
 // Create a ticket
 export async function createTicket(req: Request, res: Response) {
   try {
     const { creatorId, category, priority, summary } = req.body;
     if (!creatorId || !category || !priority) return res.status(400).json({ error: 'Missing required fields' });
+    const ticketChannelId = `ticket-${uuidv4()}`;
     const ticket = await prisma.ticket.create({
       data: {
+        ticketChannelId,
         creatorId,
         category,
         priority,
-        status: 'open',
-        // Optionally store summary in a custom field or as first message
+        status: 'open'
       }
     });
     res.json({ ok: true, ticket });
